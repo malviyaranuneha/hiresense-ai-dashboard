@@ -83,16 +83,18 @@ function Reports() {
         {/* Score distribution */}
         <section className="flex flex-col gap-4 rounded-xl bg-card p-4 ring-1 ring-foreground/5 md:p-6">
           <h2 className="text-sm font-semibold tracking-tight">Match Score Distribution</h2>
-          <div className="flex h-40 items-end gap-3">
+          <div className="flex h-44 items-stretch gap-3">
             {scoreDistribution.map((band) => (
-              <div key={band.band} className="flex flex-1 flex-col items-center gap-2">
+              <div key={band.band} className="flex h-full flex-1 flex-col items-center gap-2">
                 <span className="text-[10px] font-medium tabular-nums text-muted-foreground">
                   {band.count}
                 </span>
-                <div
-                  className="score-bar-fill w-full rounded-t-md bg-primary"
-                  style={{ height: `${(band.count / maxBand) * 100}%` }}
-                />
+                <div className="flex w-full flex-1 items-end">
+                  <div
+                    className="w-full rounded-t-md bg-primary"
+                    style={{ height: `${(band.count / maxBand) * 100}%` }}
+                  />
+                </div>
                 <span className="text-[10px] text-muted-foreground">{band.band}</span>
               </div>
             ))}
