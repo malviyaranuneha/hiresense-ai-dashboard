@@ -206,7 +206,7 @@ function SettingsPage() {
         </div>
         <button
           type="button"
-          onClick={() => navigate({ to: "/login" })}
+          onClick={handleSignOut}
           className="flex items-center gap-2 rounded-lg bg-secondary px-4 py-2 text-sm font-medium text-secondary-foreground ring-1 ring-foreground/10 transition-colors hover:bg-secondary/70"
         >
           <LogOut className="size-4" />
