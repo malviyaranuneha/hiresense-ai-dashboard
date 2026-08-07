@@ -1,7 +1,10 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import type { FormEvent } from "react";
+import { useEffect, useState, type FormEvent } from "react";
+
+import { supabase } from "@/integrations/supabase/client";
 
 export const Route = createFileRoute("/login")({
+  ssr: false,
   head: () => ({
     meta: [
       { title: "Sign in — HireSense AI" },
@@ -23,11 +26,69 @@ export const Route = createFileRoute("/login")({
 
 function Login() {
   const navigate = useNavigate();
+  const [mode, setMode] = useState<"signin" | "signup">("signin");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [fullName, setFullName] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [message, setMessage] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
 
-  const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data }) => {
+      if (data.session) navigate({ to: "/", replace: true });
+    });
+  }, [navigate]);
+
+  const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    // UI-only demo: any credentials proceed to the dashboard.
-    navigate({ to: "/" });
+    setBusy(true);
+    setError(null);
+    setMessage(null);
+
+    if (mode === "signup") {
+      const { data, error: signUpError } = await supabase.auth.signUp({
+        email,
+        password,
+        options: {
+          emailRedirectTo: window.location.origin,
+          data: { full_name: fullName },
+        },
+      });
+      setBusy(false);
+      if (signUpError) {
+        setError(signUpError.message);
+        return;
+      }
+      if (data.session) {
+        navigate({ to: "/", replace: true });
+        return;
+      }
+      setMessage("Check your email to confirm your account, then sign in.");
+      return;
+    }
+
+    const { error: signInError } = await supabase.auth.signInWithPassword({ email, password });
+    setBusy(false);
+    if (signInError) {
+      setError(signInError.message);
+      return;
+    }
+    navigate({ to: "/", replace: true });
+  };
+
+  const handleGoogle = async () => {
+    setError(null);
+    const { lovable } = await import("@/integrations/lovable/index");
+    const result = await lovable.auth.signInWithOAuth("google", {
+      redirect_uri: window.location.origin,
+    });
+    if (result.error) {
+      setError("Google sign-in failed. Please try again.");
+      return;
+    }
+    if (result.redirected) return;
+    navigate({ to: "/", replace: true });
   };
 
   return (
@@ -40,7 +101,9 @@ function Login() {
           <div className="text-center">
             <h1 className="text-lg font-semibold tracking-tight">HireSense AI</h1>
             <p className="mt-1 text-sm text-muted-foreground">
-              Sign in to your recruiting workspace
+              {mode === "signin"
+                ? "Sign in to your recruiting workspace"
+                : "Create your recruiting workspace"}
             </p>
           </div>
         </div>
@@ -49,6 +112,23 @@ function Login() {
           onSubmit={handleSubmit}
           className="flex flex-col gap-4 rounded-xl bg-card p-6 ring-1 ring-foreground/5"
         >
+          {mode === "signup" && (
+            <div className="flex flex-col gap-1.5">
+              <label htmlFor="name" className="text-xs font-medium text-muted-foreground">
+                Full name
+              </label>
+              <input
+                id="name"
+                type="text"
+                required
+                value={fullName}
+                onChange={(e) => setFullName(e.target.value)}
+                placeholder="Ava Mitchell"
+                className="h-9 rounded-lg border border-input bg-background px-3 text-sm outline-none transition-colors placeholder:text-muted-foreground/60 focus:border-ring"
+              />
+            </div>
+          )}
+
           <div className="flex flex-col gap-1.5">
             <label htmlFor="email" className="text-xs font-medium text-muted-foreground">
               Work email
@@ -57,6 +137,8 @@ function Login() {
               id="email"
               type="email"
               required
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
               placeholder="you@company.com"
               className="h-9 rounded-lg border border-input bg-background px-3 text-sm outline-none transition-colors placeholder:text-muted-foreground/60 focus:border-ring"
             />
@@ -67,7 +149,21 @@ function Login() {
               <label htmlFor="password" className="text-xs font-medium text-muted-foreground">
                 Password
               </label>
-              <button type="button" className="text-xs font-medium text-success">
+              <button
+                type="button"
+                onClick={async () => {
+                  if (!email) {
+                    setError("Enter your email first.");
+                    return;
+                  }
+                  const { error: resetError } = await supabase.auth.resetPasswordForEmail(email, {
+                    redirectTo: `${window.location.origin}/reset-password`,
+                  });
+                  setError(resetError ? resetError.message : null);
+                  if (!resetError) setMessage("Password reset link sent.");
+                }}
+                className="text-xs font-medium text-success"
+              >
                 Forgot password?
               </button>
             </div>
@@ -75,25 +171,47 @@ function Login() {
               id="password"
               type="password"
               required
+              minLength={6}
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
               placeholder="••••••••"
               className="h-9 rounded-lg border border-input bg-background px-3 text-sm outline-none transition-colors placeholder:text-muted-foreground/60 focus:border-ring"
             />
           </div>
 
+          {error && <p className="text-xs text-destructive">{error}</p>}
+          {message && <p className="text-xs text-success">{message}</p>}
+
           <button
             type="submit"
-            className="mt-1 flex h-9 w-full items-center justify-center rounded-lg bg-primary text-sm font-medium text-primary-foreground ring-1 ring-primary transition-transform active:scale-[0.98]"
+            disabled={busy}
+            className="mt-1 flex h-9 w-full items-center justify-center rounded-lg bg-primary text-sm font-medium text-primary-foreground ring-1 ring-primary transition-transform active:scale-[0.98] disabled:opacity-60"
           >
-            Sign in
+            {busy ? "Please wait…" : mode === "signin" ? "Sign in" : "Create account"}
           </button>
 
-          <p className="text-center text-[11px] text-muted-foreground">
-            Demo build — any credentials will sign you in.
-          </p>
+          <button
+            type="button"
+            onClick={handleGoogle}
+            className="flex h-9 w-full items-center justify-center gap-2 rounded-lg bg-secondary text-sm font-medium text-secondary-foreground ring-1 ring-foreground/10 transition-colors hover:bg-secondary/70"
+          >
+            Continue with Google
+          </button>
         </form>
 
         <p className="mt-6 text-center text-xs text-muted-foreground">
-          New to HireSense? <span className="font-medium text-foreground">Start a free trial</span>
+          {mode === "signin" ? "New to HireSense? " : "Already have an account? "}
+          <button
+            type="button"
+            onClick={() => {
+              setMode(mode === "signin" ? "signup" : "signin");
+              setError(null);
+              setMessage(null);
+            }}
+            className="font-medium text-foreground"
+          >
+            {mode === "signin" ? "Create an account" : "Sign in"}
+          </button>
         </p>
       </div>
     </div>

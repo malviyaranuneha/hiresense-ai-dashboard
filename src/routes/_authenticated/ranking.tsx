@@ -4,10 +4,10 @@ import { useState } from "react";
 
 import { AppShell } from "@/components/app-shell";
 import { ScoreBar, ScoreValue, StatusBadge } from "@/components/score";
-import { candidates, type CandidateStatus } from "@/lib/data";
+import { useResumes } from "@/lib/api";
 import { cn } from "@/lib/utils";
 
-export const Route = createFileRoute("/ranking")({
+export const Route = createFileRoute("/_authenticated/ranking")({
   head: () => ({
     meta: [
       { title: "Candidate Ranking — HireSense AI" },
@@ -29,12 +29,21 @@ export const Route = createFileRoute("/ranking")({
   component: CandidateRanking,
 });
 
-const filters: Array<"All" | CandidateStatus> = ["All", "Shortlisted", "In Review", "On Hold"];
+const filters = ["All", "Shortlisted", "In Review", "On Hold"] as const;
+
+function label(status: string) {
+  return status
+    .split(" ")
+    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+    .join(" ");
+}
 
 function CandidateRanking() {
   const [filter, setFilter] = useState<(typeof filters)[number]>("All");
+  const { data: candidates = [], isLoading } = useResumes();
 
-  const visible = filter === "All" ? candidates : candidates.filter((c) => c.status === filter);
+  const visible =
+    filter === "All" ? candidates : candidates.filter((c) => label(c.status) === filter);
 
   return (
     <AppShell title="Candidate Ranking">
@@ -56,29 +65,25 @@ function CandidateRanking() {
           </button>
         ))}
         <span className="ml-auto text-xs text-muted-foreground">
-          {visible.length} candidate{visible.length === 1 ? "" : "s"} · Demo data
+          {visible.length} candidate{visible.length === 1 ? "" : "s"} · Placeholder scores
         </span>
       </section>
 
       {/* Ranking list */}
       <section className="divide-y divide-border overflow-hidden rounded-xl bg-card ring-1 ring-foreground/5">
-        {visible.map((candidate) => (
-          <div key={candidate.rank} className="flex items-center gap-3 p-4 md:gap-4">
+        {visible.map((candidate, index) => (
+          <div key={candidate.id} className="flex items-center gap-3 p-4 md:gap-4">
             <span className="w-5 shrink-0 text-center text-xs font-medium tabular-nums text-muted-foreground">
-              {candidate.rank}
+              {index + 1}
             </span>
-            <img
-              src={candidate.avatar}
-              alt={`${candidate.name} headshot`}
-              width={512}
-              height={512}
-              loading="lazy"
-              className="size-9 shrink-0 rounded-lg object-cover ring-1 ring-foreground/5"
-            />
+            <span className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-secondary text-[11px] font-medium text-secondary-foreground ring-1 ring-foreground/5">
+              {candidate.candidate_name.slice(0, 2).toUpperCase() || "??"}
+            </span>
             <div className="min-w-0 flex-1">
-              <p className="truncate text-sm font-medium">{candidate.name}</p>
+              <p className="truncate text-sm font-medium">{candidate.candidate_name || "Unnamed"}</p>
               <p className="text-[11px] text-muted-foreground">
-                {candidate.role} · Applied {candidate.applied}
+                {candidate.file_name} · Uploaded{" "}
+                {new Date(candidate.created_at).toLocaleDateString()}
               </p>
               <div className="mt-1.5 hidden gap-1 sm:flex">
                 {candidate.skills.map((skill) => (
@@ -92,18 +97,18 @@ function CandidateRanking() {
               </div>
             </div>
             <div className="flex w-20 shrink-0 flex-col items-end gap-1.5 md:w-28">
-              <ScoreValue score={candidate.score} />
-              <ScoreBar score={candidate.score} className="w-full" />
+              <ScoreValue score={candidate.match_score ?? 0} />
+              <ScoreBar score={candidate.match_score ?? 0} className="w-full" />
             </div>
             <div className="hidden shrink-0 md:block">
-              <StatusBadge status={candidate.status} />
+              <StatusBadge status={label(candidate.status)} />
             </div>
             <ChevronRight className="size-4 shrink-0 text-muted-foreground/50" />
           </div>
         ))}
         {visible.length === 0 && (
           <p className="p-8 text-center text-sm text-muted-foreground">
-            No candidates match this filter.
+            {isLoading ? "Loading candidates…" : "No candidates match this filter."}
           </p>
         )}
       </section>

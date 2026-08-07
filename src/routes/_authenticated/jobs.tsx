@@ -5,7 +5,7 @@ import { AppShell } from "@/components/app-shell";
 import { StatusBadge } from "@/components/score";
 import { jobDescriptions } from "@/lib/data";
 
-export const Route = createFileRoute("/jobs")({
+export const Route = createFileRoute("/_authenticated/jobs")({
   head: () => ({
     meta: [
       { title: "Job Descriptions — HireSense AI" },

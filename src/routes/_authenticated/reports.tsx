@@ -4,7 +4,7 @@ import { Download } from "lucide-react";
 import { AppShell } from "@/components/app-shell";
 import { candidatesPerRole, pipelineBreakdown, scoreDistribution } from "@/lib/data";
 
-export const Route = createFileRoute("/reports")({
+export const Route = createFileRoute("/_authenticated/reports")({
   head: () => ({
     meta: [
       { title: "Reports — HireSense AI" },
