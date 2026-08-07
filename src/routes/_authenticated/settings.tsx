@@ -6,7 +6,7 @@ import { AppShell } from "@/components/app-shell";
 import { Switch } from "@/components/ui/switch";
 import { currentUser } from "@/lib/data";
 
-export const Route = createFileRoute("/settings")({
+export const Route = createFileRoute("/_authenticated/settings")({
   head: () => ({
     meta: [
       { title: "Settings — HireSense AI" },

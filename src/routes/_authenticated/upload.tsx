@@ -5,7 +5,7 @@ import { useRef, useState, type DragEvent } from "react";
 import { AppShell } from "@/components/app-shell";
 import { cn } from "@/lib/utils";
 
-export const Route = createFileRoute("/upload")({
+export const Route = createFileRoute("/_authenticated/upload")({
   head: () => ({
     meta: [
       { title: "Resume Upload — HireSense AI" },
