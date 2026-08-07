@@ -1,4 +1,5 @@
-import { Link, useRouterState } from "@tanstack/react-router";
+import { useQueryClient } from "@tanstack/react-query";
+import { Link, useNavigate, useRouterState } from "@tanstack/react-router";
 import {
   LayoutGrid,
   FileText,
@@ -11,7 +12,8 @@ import {
 } from "lucide-react";
 import type { ReactNode } from "react";
 
-import { currentUser } from "@/lib/data";
+import { supabase } from "@/integrations/supabase/client";
+import { useProfile } from "@/lib/api";
 import { cn } from "@/lib/utils";
 
 const navItems = [
@@ -24,6 +26,24 @@ const navItems = [
 
 export function AppShell({ title, children }: { title: string; children: ReactNode }) {
   const currentPath = useRouterState({ select: (router) => router.location.pathname });
+  const navigate = useNavigate();
+  const queryClient = useQueryClient();
+  const { data: profile } = useProfile();
+
+  const handleSignOut = async () => {
+    await queryClient.cancelQueries();
+    queryClient.clear();
+    await supabase.auth.signOut();
+    navigate({ to: "/login", replace: true });
+  };
+
+  const initials = (profile?.full_name ?? "")
+    .split(" ")
+    .map((part) => part[0])
+    .filter(Boolean)
+    .slice(0, 2)
+    .join("")
+    .toUpperCase();
 
   const isActive = (path: string, exact: boolean) =>
     exact ? currentPath === path : currentPath.startsWith(path);
@@ -68,14 +88,15 @@ export function AppShell({ title, children }: { title: string; children: ReactNo
             <Settings className="size-4 shrink-0" />
             <span className="hidden md:block">Settings</span>
           </Link>
-          <Link
-            to="/login"
-            className={linkClass(false)}
+          <button
+            type="button"
+            onClick={handleSignOut}
+            className={cn(linkClass(false), "w-full")}
             title="Sign out"
           >
             <LogOut className="size-4 shrink-0" />
             <span className="hidden md:block">Sign out</span>
-          </Link>
+          </button>
         </div>
       </aside>
 
@@ -91,14 +112,23 @@ export function AppShell({ title, children }: { title: string; children: ReactNo
             >
               <Search className="size-4" />
             </button>
-            <img
-              src={currentUser.avatar}
-              alt={currentUser.name}
-              width={512}
-              height={512}
-              loading="lazy"
-              className="size-7 rounded-full object-cover ring-1 ring-foreground/10"
-            />
+            {profile?.avatar_url ? (
+              <img
+                src={profile.avatar_url}
+                alt={profile.full_name}
+                width={512}
+                height={512}
+                loading="lazy"
+                className="size-7 rounded-full object-cover ring-1 ring-foreground/10"
+              />
+            ) : (
+              <span
+                aria-label={profile?.full_name ?? "Account"}
+                className="flex size-7 items-center justify-center rounded-full bg-secondary text-[10px] font-medium text-secondary-foreground ring-1 ring-foreground/10"
+              >
+                {initials || "—"}
+              </span>
+            )}
           </div>
         </header>
 
