@@ -1,10 +1,13 @@
+import { useQueryClient } from "@tanstack/react-query";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { LogOut } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 import { AppShell } from "@/components/app-shell";
 import { Switch } from "@/components/ui/switch";
-import { currentUser } from "@/lib/data";
+import { supabase } from "@/integrations/supabase/client";
+import { useProfile, useUpdateProfile } from "@/lib/api";
+
 
 export const Route = createFileRoute("/_authenticated/settings")({
   head: () => ({
