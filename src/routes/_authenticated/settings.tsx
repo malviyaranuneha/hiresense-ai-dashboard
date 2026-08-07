@@ -54,6 +54,34 @@ function ToggleRow({
 
 function SettingsPage() {
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
+  const { data: profile } = useProfile();
+  const updateProfile = useUpdateProfile();
+
+  const [fullName, setFullName] = useState("");
+  const [jobTitle, setJobTitle] = useState("");
+
+  useEffect(() => {
+    if (profile) {
+      setFullName(profile.full_name);
+      setJobTitle(profile.job_title);
+    }
+  }, [profile]);
+
+  const initials = fullName
+    .split(" ")
+    .map((part) => part[0])
+    .filter(Boolean)
+    .slice(0, 2)
+    .join("")
+    .toUpperCase();
+
+  const handleSignOut = async () => {
+    await queryClient.cancelQueries();
+    queryClient.clear();
+    await supabase.auth.signOut();
+    navigate({ to: "/login", replace: true });
+  };
 
   return (
     <AppShell title="Settings">
@@ -61,17 +89,12 @@ function SettingsPage() {
       <section className="flex flex-col gap-4 rounded-xl bg-card p-4 ring-1 ring-foreground/5 md:p-6">
         <h2 className="text-sm font-semibold tracking-tight">Profile</h2>
         <div className="flex items-center gap-4">
-          <img
-            src={currentUser.avatar}
-            alt={`${currentUser.name} headshot`}
-            width={512}
-            height={512}
-            loading="lazy"
-            className="size-12 rounded-xl object-cover ring-1 ring-foreground/10"
-          />
+          <span className="flex size-12 items-center justify-center rounded-xl bg-secondary text-sm font-medium text-secondary-foreground ring-1 ring-foreground/10">
+            {initials || "HS"}
+          </span>
           <div>
-            <p className="text-sm font-medium">{currentUser.name}</p>
-            <p className="text-xs text-muted-foreground">{currentUser.role}</p>
+            <p className="text-sm font-medium">{profile?.full_name ?? "—"}</p>
+            <p className="text-xs text-muted-foreground">{profile?.job_title ?? "Recruiter"}</p>
           </div>
         </div>
         <div className="grid gap-3 md:grid-cols-2">
@@ -82,7 +105,20 @@ function SettingsPage() {
             <input
               id="settings-name"
               type="text"
-              defaultValue={currentUser.name}
+              value={fullName}
+              onChange={(event) => setFullName(event.target.value)}
+              className="h-9 rounded-lg border border-input bg-background px-3 text-sm outline-none transition-colors focus:border-ring"
+            />
+          </div>
+          <div className="flex flex-col gap-1.5">
+            <label htmlFor="settings-title" className="text-xs font-medium text-muted-foreground">
+              Job title
+            </label>
+            <input
+              id="settings-title"
+              type="text"
+              value={jobTitle}
+              onChange={(event) => setJobTitle(event.target.value)}
               className="h-9 rounded-lg border border-input bg-background px-3 text-sm outline-none transition-colors focus:border-ring"
             />
           </div>
@@ -93,20 +129,29 @@ function SettingsPage() {
             <input
               id="settings-email"
               type="email"
-              defaultValue={currentUser.email}
-              className="h-9 rounded-lg border border-input bg-background px-3 text-sm outline-none transition-colors focus:border-ring"
+              value={profile?.email ?? ""}
+              readOnly
+              className="h-9 rounded-lg border border-input bg-secondary/50 px-3 text-sm text-muted-foreground outline-none"
             />
           </div>
         </div>
-        <div className="flex justify-end">
+        <div className="flex items-center justify-end gap-3">
+          {updateProfile.isSuccess && (
+            <span className="text-xs text-success">Saved</span>
+          )}
           <button
             type="button"
-            className="rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground ring-1 ring-primary transition-transform active:scale-[0.98]"
+            disabled={updateProfile.isPending}
+            onClick={() =>
+              updateProfile.mutate({ full_name: fullName, job_title: jobTitle })
+            }
+            className="rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground ring-1 ring-primary transition-transform active:scale-[0.98] disabled:opacity-60"
           >
-            Save Changes
+            {updateProfile.isPending ? "Saving…" : "Save Changes"}
           </button>
         </div>
       </section>
+
 
       {/* Matching preferences */}
       <section className="flex flex-col gap-2 rounded-xl bg-card p-4 ring-1 ring-foreground/5 md:p-6">
