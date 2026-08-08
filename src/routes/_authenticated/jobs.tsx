@@ -196,7 +196,7 @@ function JobDescriptions() {
             role="status"
             className={
               message.tone === "ok"
-                ? "text-xs font-medium text-[var(--score-high)]"
+                ? "text-xs font-medium text-success"
                 : "text-xs font-medium text-destructive"
             }
           >
@@ -252,7 +252,7 @@ function JobDescriptions() {
                   <span className="hidden text-[11px] text-muted-foreground sm:block">
                     {resumes.filter((r) => r.job_description_id === job.id).length} candidates
                   </span>
-                  <StatusBadge status={job.status} />
+                  <StatusBadge status={job.status.charAt(0).toUpperCase() + job.status.slice(1)} />
                 </div>
               </div>
             ))
