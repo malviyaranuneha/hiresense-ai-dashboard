@@ -65,6 +65,8 @@ export interface JobRow {
   status: string;
   description: string;
   created_at: string;
+  file_name: string | null;
+  file_path: string | null;
 }
 
 export function useJobs() {
@@ -89,10 +91,25 @@ export function useCreateJob() {
       department: string;
       description: string;
       location?: string;
+      file?: File | null;
     }) => {
       const { data: userData } = await supabase.auth.getUser();
       const user = userData.user;
       if (!user) throw new Error("Not signed in");
+
+      let filePath: string | null = null;
+      let fileName: string | null = null;
+
+      if (values.file) {
+        const path = `${user.id}/job-descriptions/${crypto.randomUUID()}-${values.file.name}`;
+        const { error: uploadError } = await supabase.storage
+          .from("resumes")
+          .upload(path, values.file, { upsert: false });
+        if (uploadError) throw uploadError;
+        filePath = path;
+        fileName = values.file.name;
+      }
+
       const { error } = await supabase.from("job_descriptions").insert({
         user_id: user.id,
         title: values.title,
@@ -100,12 +117,15 @@ export function useCreateJob() {
         description: values.description,
         location: values.location ?? "Remote",
         status: "active",
+        file_name: fileName,
+        file_path: filePath,
       });
       if (error) throw error;
     },
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["jobs"] }),
   });
 }
+
 
 /* --------------------------------- resumes -------------------------------- */
 
