@@ -86,6 +86,8 @@ export type Database = {
           department: string
           description: string
           employment_type: string
+          file_name: string | null
+          file_path: string | null
           id: string
           location: string
           status: string
@@ -98,6 +100,8 @@ export type Database = {
           department?: string
           description?: string
           employment_type?: string
+          file_name?: string | null
+          file_path?: string | null
           id?: string
           location?: string
           status?: string
@@ -110,6 +114,8 @@ export type Database = {
           department?: string
           description?: string
           employment_type?: string
+          file_name?: string | null
+          file_path?: string | null
           id?: string
           location?: string
           status?: string
