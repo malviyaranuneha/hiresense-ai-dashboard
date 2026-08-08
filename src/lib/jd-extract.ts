@@ -20,11 +20,17 @@ export async function extractJdText(file: File): Promise<string> {
   }
 
   if (name.endsWith(".docx")) {
-    const mammoth = await import("mammoth/mammoth.browser");
-    const buffer = await file.arrayBuffer();
-    const result = await (mammoth as unknown as {
+    const mammoth = (await import(
+      /* @vite-ignore */ "mammoth/mammoth.browser"
+    )) as unknown as {
       extractRawText: (input: { arrayBuffer: ArrayBuffer }) => Promise<{ value: string }>;
-    }).extractRawText({ arrayBuffer: buffer });
+      default?: {
+        extractRawText: (input: { arrayBuffer: ArrayBuffer }) => Promise<{ value: string }>;
+      };
+    };
+    const api = mammoth.default ?? mammoth;
+    const buffer = await file.arrayBuffer();
+    const result = await api.extractRawText({ arrayBuffer: buffer });
     return result.value.trim();
   }
 
