@@ -1,5 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { Download } from "lucide-react";
+import { useState } from "react";
+
 
 import { AppShell } from "@/components/app-shell";
 import { candidatesPerRole, pipelineBreakdown, scoreDistribution } from "@/lib/data";
@@ -33,10 +35,43 @@ const monthlyStats = [
   { label: "Top Match Score", value: "94%", delta: undefined },
 ];
 
+function csvCell(value: string | number): string {
+  const text = String(value);
+  return /[",\n]/.test(text) ? `"${text.replace(/"/g, '""')}"` : text;
+}
+
 function Reports() {
+  const [exportError, setExportError] = useState<string | null>(null);
   const maxPerRole = Math.max(...candidatesPerRole.map((r) => r.count));
   const maxBand = Math.max(...scoreDistribution.map((b) => b.count));
   const pipelineTotal = pipelineBreakdown.reduce((sum, s) => sum + s.value, 0);
+
+  const handleExport = () => {
+    setExportError(null);
+    try {
+      const rows: (string | number)[][] = [
+        ["Section", "Label", "Value"],
+        ...monthlyStats.map((s) => ["Monthly Summary", s.label, s.delta ? `${s.value} (${s.delta})` : s.value]),
+        ...candidatesPerRole.map((r) => ["Candidates per Role", r.role, r.count]),
+        ...scoreDistribution.map((b) => ["Match Score Distribution", b.band, b.count]),
+        ...pipelineBreakdown.map((s) => ["Pipeline Breakdown", s.label, s.value]),
+        ["Pipeline Breakdown", "Total resumes", pipelineTotal],
+      ];
+      const csv = rows.map((row) => row.map(csvCell).join(",")).join("\r\n");
+      const blob = new Blob([`\uFEFF${csv}`], { type: "text/csv;charset=utf-8;" });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = `hiresense-report-${new Date().toISOString().slice(0, 10)}.csv`;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      URL.revokeObjectURL(url);
+    } catch (err) {
+      setExportError(`Export failed: ${err instanceof Error ? err.message : String(err)}`);
+    }
+  };
+
 
   return (
     <AppShell title="Reports">
@@ -145,15 +180,18 @@ function Reports() {
       </section>
 
       {/* Export */}
-      <div className="flex justify-end">
+      <div className="flex flex-col items-end gap-2">
+        {exportError && <p className="text-xs text-destructive">{exportError}</p>}
         <button
           type="button"
+          onClick={handleExport}
           className="flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground ring-1 ring-primary transition-transform active:scale-[0.98]"
         >
           <Download className="size-4" />
           Export Report (CSV)
         </button>
       </div>
+
     </AppShell>
   );
 }
