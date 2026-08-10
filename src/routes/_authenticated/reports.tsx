@@ -1,5 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { Download } from "lucide-react";
+import { useState } from "react";
+
 
 import { AppShell } from "@/components/app-shell";
 import { candidatesPerRole, pipelineBreakdown, scoreDistribution } from "@/lib/data";
