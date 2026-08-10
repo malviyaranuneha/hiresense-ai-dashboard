@@ -3,6 +3,7 @@ import { CloudUpload, FileText, X } from "lucide-react";
 import { useRef, useState, type DragEvent } from "react";
 
 import { AppShell } from "@/components/app-shell";
+import { useResumes, useUploadResumes } from "@/lib/api";
 import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/_authenticated/upload")({
@@ -31,13 +32,8 @@ interface QueuedFile {
   id: number;
   name: string;
   size: string;
+  file: File;
 }
-
-const recentUploads = [
-  { name: "sarah_chen_resume.pdf", size: "182 KB", status: "Parsed" },
-  { name: "marcus_thorne_cv.docx", size: "96 KB", status: "Parsed" },
-  { name: "david_okafor_resume.pdf", size: "210 KB", status: "Parsed" },
-];
 
 function formatSize(bytes: number): string {
   if (bytes >= 1024 * 1024) return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
@@ -47,8 +43,13 @@ function formatSize(bytes: number): string {
 function ResumeUpload() {
   const [files, setFiles] = useState<QueuedFile[]>([]);
   const [isDragging, setIsDragging] = useState(false);
+  const [message, setMessage] = useState<{ tone: "ok" | "error"; text: string } | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const nextId = useRef(1);
+
+  const uploadResumes = useUploadResumes();
+  const { data: resumes = [] } = useResumes();
+  const recentUploads = resumes.slice(0, 5);
 
   const addFiles = (list: FileList | null) => {
     if (!list) return;
@@ -56,7 +57,9 @@ function ResumeUpload() {
       id: nextId.current++,
       name: file.name,
       size: formatSize(file.size),
+      file,
     }));
+    setMessage(null);
     setFiles((prev) => [...prev, ...added]);
   };
 
@@ -67,6 +70,25 @@ function ResumeUpload() {
   };
 
   const removeFile = (id: number) => setFiles((prev) => prev.filter((f) => f.id !== id));
+
+  const handleProcess = async () => {
+    setMessage(null);
+    const count = files.length;
+    try {
+      await uploadResumes.mutateAsync(files.map((f) => f.file));
+      setFiles([]);
+      if (inputRef.current) inputRef.current.value = "";
+      setMessage({
+        tone: "ok",
+        text: `Uploaded ${count} resume${count === 1 ? "" : "s"}.`,
+      });
+    } catch (err) {
+      setMessage({
+        tone: "error",
+        text: `Upload failed: ${err instanceof Error ? err.message : String(err)}`,
+      });
+    }
+  };
 
   return (
     <AppShell title="Resume Upload">
@@ -106,6 +128,17 @@ function ResumeUpload() {
         />
       </section>
 
+      {message && (
+        <p
+          className={cn(
+            "text-xs",
+            message.tone === "error" ? "text-destructive" : "text-success"
+          )}
+        >
+          {message.text}
+        </p>
+      )}
+
       {/* Upload queue */}
       {files.length > 0 && (
         <section className="flex flex-col gap-4">
@@ -130,12 +163,13 @@ function ResumeUpload() {
                 </div>
                 <div className="flex shrink-0 items-center gap-2">
                   <span className="inline-flex items-center rounded-md bg-secondary px-2 py-0.5 text-[11px] font-medium text-secondary-foreground">
-                    Queued
+                    {uploadResumes.isPending ? "Uploading" : "Queued"}
                   </span>
                   <button
                     type="button"
                     aria-label={`Remove ${file.name}`}
                     onClick={() => removeFile(file.id)}
+                    disabled={uploadResumes.isPending}
                     className="rounded-full p-1 text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground"
                   >
                     <X className="size-3.5" />
@@ -148,9 +182,13 @@ function ResumeUpload() {
           <div className="flex justify-end">
             <button
               type="button"
-              className="rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground ring-1 ring-primary transition-transform active:scale-[0.98]"
+              onClick={handleProcess}
+              disabled={uploadResumes.isPending}
+              className="rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground ring-1 ring-primary transition-transform active:scale-[0.98] disabled:opacity-60"
             >
-              Process {files.length} Resume{files.length === 1 ? "" : "s"}
+              {uploadResumes.isPending
+                ? "Processing…"
+                : `Process ${files.length} Resume${files.length === 1 ? "" : "s"}`}
             </button>
           </div>
           <p className="-mt-2 text-right text-[11px] text-muted-foreground">
@@ -163,22 +201,28 @@ function ResumeUpload() {
       <section className="flex flex-col gap-4">
         <h2 className="text-sm font-semibold tracking-tight">Recent Uploads</h2>
         <div className="divide-y divide-border overflow-hidden rounded-xl bg-card ring-1 ring-foreground/5">
-          {recentUploads.map((file) => (
-            <div key={file.name} className="flex items-center justify-between gap-3 p-4">
-              <div className="flex min-w-0 items-center gap-3">
-                <div className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-secondary ring-1 ring-foreground/5">
-                  <FileText className="size-4 text-muted-foreground" />
+          {recentUploads.length === 0 ? (
+            <p className="p-4 text-xs text-muted-foreground">No resumes uploaded yet.</p>
+          ) : (
+            recentUploads.map((file) => (
+              <div key={file.id} className="flex items-center justify-between gap-3 p-4">
+                <div className="flex min-w-0 items-center gap-3">
+                  <div className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-secondary ring-1 ring-foreground/5">
+                    <FileText className="size-4 text-muted-foreground" />
+                  </div>
+                  <div className="min-w-0">
+                    <p className="truncate text-sm font-medium">{file.file_name}</p>
+                    <p className="text-[11px] text-muted-foreground">
+                      {file.file_size ? formatSize(file.file_size) : "—"}
+                    </p>
+                  </div>
                 </div>
-                <div className="min-w-0">
-                  <p className="truncate text-sm font-medium">{file.name}</p>
-                  <p className="text-[11px] text-muted-foreground">{file.size}</p>
-                </div>
+                <span className="inline-flex shrink-0 items-center rounded-md bg-success/10 px-2 py-0.5 text-[11px] font-medium text-success">
+                  Parsed
+                </span>
               </div>
-              <span className="inline-flex shrink-0 items-center rounded-md bg-success/10 px-2 py-0.5 text-[11px] font-medium text-success">
-                {file.status}
-              </span>
-            </div>
-          ))}
+            ))
+          )}
         </div>
       </section>
     </AppShell>
