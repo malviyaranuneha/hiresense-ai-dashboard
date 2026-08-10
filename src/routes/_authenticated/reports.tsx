@@ -180,15 +180,18 @@ function Reports() {
       </section>
 
       {/* Export */}
-      <div className="flex justify-end">
+      <div className="flex flex-col items-end gap-2">
+        {exportError && <p className="text-xs text-destructive">{exportError}</p>}
         <button
           type="button"
+          onClick={handleExport}
           className="flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground ring-1 ring-primary transition-transform active:scale-[0.98]"
         >
           <Download className="size-4" />
           Export Report (CSV)
         </button>
       </div>
+
     </AppShell>
   );
 }
