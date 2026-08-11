@@ -75,12 +75,16 @@ function ResumeUpload() {
     setMessage(null);
     const count = files.length;
     try {
-      await uploadResumes.mutateAsync(files.map((f) => f.file));
+      const result = await uploadResumes.mutateAsync(files.map((f) => f.file));
       setFiles([]);
       if (inputRef.current) inputRef.current.value = "";
+      const base = `Uploaded ${count} resume${count === 1 ? "" : "s"}. Text extracted from ${result.extracted}/${result.total}.`;
       setMessage({
-        tone: "ok",
-        text: `Uploaded ${count} resume${count === 1 ? "" : "s"}.`,
+        tone: result.extractionErrors.length > 0 ? "error" : "ok",
+        text:
+          result.extractionErrors.length > 0
+            ? `${base} ${result.extractionErrors.join("; ")}`
+            : base,
       });
     } catch (err) {
       setMessage({
