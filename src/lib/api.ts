@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 import { supabase } from "@/integrations/supabase/client";
+import { extractJdText } from "@/lib/jd-extract";
 
 /* ---------------------------------- auth ---------------------------------- */
 
@@ -182,12 +183,31 @@ export function useUploadResumes() {
       const user = userData.user;
       if (!user) throw new Error("Not signed in");
 
+      let extracted = 0;
+      const extractionErrors: string[] = [];
+
       for (const file of files) {
         const path = `${user.id}/${crypto.randomUUID()}-${file.name}`;
         const { error: uploadError } = await supabase.storage
           .from("resumes")
           .upload(path, file, { upsert: false });
         if (uploadError) throw uploadError;
+
+        // Real text extraction for PDF / DOCX / TXT resumes.
+        let parsedText: string | null = null;
+        try {
+          const text = await extractJdText(file);
+          if (text) {
+            parsedText = text;
+            extracted += 1;
+          } else {
+            extractionErrors.push(`${file.name}: no readable text found`);
+          }
+        } catch (err) {
+          extractionErrors.push(
+            `${file.name}: ${err instanceof Error ? err.message : String(err)}`,
+          );
+        }
 
         const score = placeholderScore(file.name + file.size);
         const { data: resume, error: insertError } = await supabase
@@ -198,6 +218,7 @@ export function useUploadResumes() {
             file_name: file.name,
             file_path: path,
             file_size: file.size,
+            parsed_text: parsedText,
             match_score: score,
             status: score >= 85 ? "shortlisted" : score >= 70 ? "in review" : "on hold",
           })
@@ -213,9 +234,12 @@ export function useUploadResumes() {
         });
         if (analysisError) throw analysisError;
       }
+
+      return { total: files.length, extracted, extractionErrors };
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["resumes"] });
     },
   });
 }
+
