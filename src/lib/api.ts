@@ -1,7 +1,9 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useServerFn } from "@tanstack/react-start";
 
 import { supabase } from "@/integrations/supabase/client";
 import { extractJdText } from "@/lib/jd-extract";
+import { runJobMatching } from "@/lib/matching.functions";
 
 /* ---------------------------------- auth ---------------------------------- */
 
@@ -243,3 +245,43 @@ export function useUploadResumes() {
   });
 }
 
+
+/* ----------------------------- candidate analysis --------------------------- */
+
+export interface AnalysisRow {
+  id: string;
+  resume_id: string;
+  job_description_id: string | null;
+  overall_score: number;
+  matched_skills: string[];
+  missing_skills: string[];
+  summary: string | null;
+  recommendation: string | null;
+}
+
+export function useAnalyses() {
+  return useQuery({
+    queryKey: ["analyses"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("candidate_analysis")
+        .select(
+          "id, resume_id, job_description_id, overall_score, matched_skills, missing_skills, summary, recommendation",
+        );
+      if (error) throw error;
+      return (data ?? []) as AnalysisRow[];
+    },
+  });
+}
+
+export function useRunMatching() {
+  const queryClient = useQueryClient();
+  const run = useServerFn(runJobMatching);
+  return useMutation({
+    mutationFn: async (jobId: string) => run({ data: { jobId } }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["resumes"] });
+      queryClient.invalidateQueries({ queryKey: ["analyses"] });
+    },
+  });
+}
