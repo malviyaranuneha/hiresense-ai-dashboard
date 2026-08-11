@@ -4,8 +4,9 @@ import { useState } from "react";
 
 import { AppShell } from "@/components/app-shell";
 import { ScoreBar, ScoreValue, StatusBadge } from "@/components/score";
-import { useResumes } from "@/lib/api";
+import { useAnalyses, useJobs, useResumes, useRunMatching } from "@/lib/api";
 import { cn } from "@/lib/utils";
+
 
 export const Route = createFileRoute("/_authenticated/ranking")({
   head: () => ({
