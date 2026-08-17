@@ -1,24 +1,39 @@
-# HireSense AI Dashboard
 
-Build a modern web application called HireSense AI. It is an AI-powered Resume Shortlisting System for recruiters. Create a clean dashboard with a sidebar containing Dashboard, Job Descriptions, Resume Upload, Candidate Ranking, Reports, and Settings. Add a login page, dashboard cards, a Job Description page with upload and text input, a Resume Upload page supporting multiple resumes, a Candidate Ranking page with placeholder data, and a Reports page. Focus only on the UI and user experience. Do not implement AI or backend functionality yet.
+# HireSense AI
 
-This project was built with [Lovable](https://lovable.dev).
+An AI-powered resume shortlisting platform that helps recruiters create job descriptions, process resumes, compare candidates against roles, and identify the strongest matches.
 
-## Build with Lovable
+## Live Demo
 
-Continue developing this project in the [Lovable editor](https://lovable.dev/projects/3433d307-fc21-46b7-853c-a249189dc647).
+[Open HireSense AI](https://hire-sense-ui.lovable.app)
 
-- **Ship faster**: describe what you want to build and Lovable handles the code.
-- **Stay in sync**: every change made in Lovable is committed straight to this repository.
-- **Full ownership**: this code is yours. Push to `main` on GitHub and your changes sync back into Lovable, ready for your next prompt.
+## Features
 
-## Development
+- Recruiter authentication
+- Job Description creation and storage
+- Resume upload and text extraction
+- AI-powered JD-to-resume matching
+- Candidate ranking with match scores
+- Candidate detail view with matched and missing skills
+- CSV report export
 
-Prefer working locally? You need Node.js and npm — [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating).
+## Workflow
 
-```sh
-git clone <this-repository-url>
-cd <repository-name>
-npm i
-npm run dev
-```
+1. Create a Job Description
+2. Upload and process resumes
+3. Extract resume text
+4. Run AI matching against the selected role
+5. Review ranked candidates and recommendations
+6. Export reports as CSV
+
+## Tech Stack
+
+- React and TypeScript
+- Lovable
+- Supabase / Lovable Cloud
+- Lovable AI
+- GitHub
+
+## Author
+
+Neha Malviya
