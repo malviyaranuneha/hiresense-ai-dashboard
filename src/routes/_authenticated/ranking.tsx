@@ -44,6 +44,7 @@ function CandidateRanking() {
   const [jobId, setJobId] = useState("");
   const [status, setStatus] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [openCandidateId, setOpenCandidateId] = useState<string | null>(null);
   const { data: candidates = [], isLoading } = useResumes();
   const { data: jobs = [] } = useJobs();
   const { data: analyses = [] } = useAnalyses();
@@ -65,6 +66,10 @@ function CandidateRanking() {
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
     }
+  }
+
+  function toggleCandidate(id: string) {
+    setOpenCandidateId((prev) => (prev === id ? null : id));
   }
 
   return (
@@ -125,42 +130,144 @@ function CandidateRanking() {
           const skills = analysis?.matched_skills?.length
             ? analysis.matched_skills.slice(0, 4)
             : candidate.skills;
+          const isOpen = openCandidateId === candidate.id;
+          const matchedSkills = analysis?.matched_skills ?? [];
+          const missingSkills = analysis?.missing_skills ?? [];
+          const selectedJobTitle =
+            jobs.find(
+              (j) =>
+                j.id === (analysis?.job_description_id || candidate.job_description_id),
+            )?.title ?? "No job selected";
+
           return (
-            <div key={candidate.id} className="flex items-center gap-3 p-4 md:gap-4">
-              <span className="w-5 shrink-0 text-center text-xs font-medium tabular-nums text-muted-foreground">
-                {index + 1}
-              </span>
-              <span className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-secondary text-[11px] font-medium text-secondary-foreground ring-1 ring-foreground/5">
-                {candidate.candidate_name.slice(0, 2).toUpperCase() || "??"}
-              </span>
-              <div className="min-w-0 flex-1">
-                <p className="truncate text-sm font-medium">
-                  {candidate.candidate_name || "Unnamed"}
-                </p>
-                <p className="truncate text-[11px] text-muted-foreground">
-                  {analysis?.summary
-                    ? analysis.summary
-                    : `${candidate.file_name} · Uploaded ${new Date(candidate.created_at).toLocaleDateString()}`}
-                </p>
-                <div className="mt-1.5 hidden gap-1 sm:flex">
-                  {skills.map((skill) => (
-                    <span
-                      key={skill}
-                      className="rounded-md bg-secondary px-1.5 py-0.5 text-[10px] font-medium text-secondary-foreground"
-                    >
-                      {skill}
-                    </span>
-                  ))}
+            <div key={candidate.id}>
+              <div
+                onClick={() => toggleCandidate(candidate.id)}
+                className="flex cursor-pointer items-center gap-3 p-4 transition-colors hover:bg-secondary/30 md:gap-4"
+              >
+                <span className="w-5 shrink-0 text-center text-xs font-medium tabular-nums text-muted-foreground">
+                  {index + 1}
+                </span>
+                <span className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-secondary text-[11px] font-medium text-secondary-foreground ring-1 ring-foreground/5">
+                  {candidate.candidate_name.slice(0, 2).toUpperCase() || "??"}
+                </span>
+                <div className="min-w-0 flex-1">
+                  <p className="truncate text-sm font-medium">
+                    {candidate.candidate_name || "Unnamed"}
+                  </p>
+                  <p className="truncate text-[11px] text-muted-foreground">
+                    {analysis?.summary
+                      ? analysis.summary
+                      : `${candidate.file_name} · Uploaded ${new Date(candidate.created_at).toLocaleDateString()}`}
+                  </p>
+                  <div className="mt-1.5 hidden gap-1 sm:flex">
+                    {skills.map((skill) => (
+                      <span
+                        key={skill}
+                        className="rounded-md bg-secondary px-1.5 py-0.5 text-[10px] font-medium text-secondary-foreground"
+                      >
+                        {skill}
+                      </span>
+                    ))}
+                  </div>
                 </div>
+                <div className="flex w-20 shrink-0 flex-col items-end gap-1.5 md:w-28">
+                  <ScoreValue score={score} />
+                  <ScoreBar score={score} className="w-full" />
+                </div>
+                <div className="hidden shrink-0 md:block">
+                  <StatusBadge status={label(candidate.status)} />
+                </div>
+                {isOpen ? (
+                  <ChevronDown className="size-4 shrink-0 text-muted-foreground/70" />
+                ) : (
+                  <ChevronRight className="size-4 shrink-0 text-muted-foreground/50" />
+                )}
               </div>
-              <div className="flex w-20 shrink-0 flex-col items-end gap-1.5 md:w-28">
-                <ScoreValue score={score} />
-                <ScoreBar score={score} className="w-full" />
-              </div>
-              <div className="hidden shrink-0 md:block">
-                <StatusBadge status={label(candidate.status)} />
-              </div>
-              <ChevronRight className="size-4 shrink-0 text-muted-foreground/50" />
+
+              {isOpen && (
+                <div className="border-t border-border bg-secondary/20 p-4 md:p-6">
+                  <div className="grid gap-4 md:grid-cols-2">
+                    <div>
+                      <p className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
+                        Selected job
+                      </p>
+                      <p className="mt-1 text-sm font-medium">{selectedJobTitle}</p>
+                    </div>
+                    <div>
+                      <p className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
+                        Match score
+                      </p>
+                      <div className="mt-1 flex items-center gap-2">
+                        <ScoreValue score={score} />
+                        <ScoreBar score={score} className="w-24" />
+                      </div>
+                    </div>
+                    <div>
+                      <p className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
+                        Recommendation
+                      </p>
+                      <p className="mt-1 text-sm">
+                        {analysis?.recommendation ?? "—"}
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
+                        Status
+                      </p>
+                      <div className="mt-1">
+                        <StatusBadge status={label(candidate.status)} />
+                      </div>
+                    </div>
+                    <div className="md:col-span-2">
+                      <p className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
+                        Reason
+                      </p>
+                      <p className="mt-1 text-sm text-muted-foreground">
+                        {analysis?.summary ?? "No analysis reason available."}
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
+                        Matched skills
+                      </p>
+                      <div className="mt-1 flex flex-wrap gap-1">
+                        {matchedSkills.length > 0 ? (
+                          matchedSkills.map((skill) => (
+                            <span
+                              key={skill}
+                              className="rounded-md bg-secondary px-1.5 py-0.5 text-[10px] font-medium text-secondary-foreground"
+                            >
+                              {skill}
+                            </span>
+                          ))
+                        ) : (
+                          <span className="text-sm text-muted-foreground">—</span>
+                        )}
+                      </div>
+                    </div>
+                    <div>
+                      <p className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
+                        Missing skills
+                      </p>
+                      <div className="mt-1 flex flex-wrap gap-1">
+                        {missingSkills.length > 0 ? (
+                          missingSkills.map((skill) => (
+                            <span
+                              key={skill}
+                              className="rounded-md bg-destructive/10 px-1.5 py-0.5 text-[10px] font-medium text-destructive"
+                            >
+                              {skill}
+                            </span>
+                          ))
+                        ) : (
+                          <span className="text-sm text-muted-foreground">—</span>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
           );
         })}
